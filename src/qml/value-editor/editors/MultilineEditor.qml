@@ -18,6 +18,7 @@ ColumnLayout
     property bool isEdited: false
     property var value    
     property int valueSizeLimit: 150000
+    property string formatterSettingsCategory: "formatters_value"
 
     function initEmpty() {
         // init editor with empty model
@@ -51,13 +52,18 @@ ColumnLayout
         });
     }
 
-    function loadRawValue(callback) {                       
-       var formatter = formatterSelector.model[formatterSelector.currentIndex]
+    function loadRawValue(callback) {
+        if (formatterSelector.visible) {
+           var formatter = formatterSelector.model[formatterSelector.currentIndex]
 
-        formatter.instance.getRaw(textView.model.getText(), function (error, raw) {
-            root.value = raw
-            return callback(error, raw)
-        })
+            formatter.instance.getRaw(textView.model.getText(), function (error, raw) {
+                root.value = raw
+                return callback(error, raw)
+            })
+        } else {
+            root.value = textView.model.getText()
+            return callback("", root.value)
+        }
     }
 
     function loadFormattedValue(val) {
@@ -178,7 +184,7 @@ ColumnLayout
 
             Settings {
                 id: defaultFormatterSettings
-                category: "formatters"
+                category: formatterSettingsCategory
                 property alias defaultFormatterIndex: formatterSelector.currentIndex
             }
         }
