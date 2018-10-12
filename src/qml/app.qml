@@ -123,15 +123,19 @@ ApplicationWindow {
     }
 
     Connections {
+        target: appEvents
+
+        onError: {
+            notification.showError(msg)
+        }
+    }
+
+    Connections {
         target: connectionsManager
 
         onEditConnection: {
             connectionSettingsDialog.settings = config
             connectionSettingsDialog.open()
-        }
-
-        onError: {            
-            notification.showError(err)
         }
 
         Component.onCompleted: {
@@ -167,25 +171,25 @@ ApplicationWindow {
                 Layout.minimumHeight: 30
 
                 onCurrentIndexChanged: {
-
+                    var realIndex;
                     if (tabs.getTab(currentIndex).tabType) {
-                        if (tabs.getTab(currentIndex).tabType == "value") {
+                        if (tabs.getTab(currentIndex).tabType === "value") {
 
-                            var realIndex = currentIndex - serverStatsModel.tabsCount();
-
-                            if (welcomeTab) {
-                                realIndex -= 1
-                            }
-
-                            viewModel.setCurrentTab(realIndex);
-                        } else if (tabs.getTab(currentIndex).tabType == "server_info") {
-                            var realIndex = currentIndex;
+                            realIndex = currentIndex - serverStatsModel.tabsCount();
 
                             if (welcomeTab) {
                                 realIndex -= 1
                             }
 
-                            serverStatsModel.setCurrentTab(index);
+                            valuesModel.setCurrentTab(realIndex);
+                        } else if (tabs.getTab(currentIndex).tabType === "server_info") {
+                            realIndex = currentIndex;
+
+                            if (welcomeTab) {
+                                realIndex -= 1
+                            }
+
+                            serverStatsModel.setCurrentTab(realIndex);
                         }
                     }
                 }
@@ -284,9 +288,8 @@ ApplicationWindow {
                         textColor: "#6D6D6E"
 
                         Connections {
-                            target: appLogger
-                            onEvent: logTab.append(msg)
-                            Component.onCompleted: appLogger.getMessages()
+                            target: appEvents
+                            onLog: logTab.append(msg)
                         }
                     }
                 }
