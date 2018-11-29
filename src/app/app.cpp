@@ -27,12 +27,11 @@
 #include "modules/value-editor/valueviewmodel.h"
 #include "qmlutils.h"
 
-Application::Application(int &argc, char **argv)
+Application::Application(int& argc, char** argv)
     : QApplication(argc, argv),
       m_engine(this),
       m_qmlUtils(QSharedPointer<QmlUtils>(new QmlUtils())),
-      m_events(QSharedPointer<Events>(new Events())),
-      m_logger(nullptr) {
+      m_events(QSharedPointer<Events>(new Events())) {
   // Init components required for models and qml
   initAppInfo();
   processCmdArgs();
@@ -49,11 +48,14 @@ void Application::initModels() {
 
   if (config.isNull()) {
     QMessageBox::critical(
-        nullptr, QObject::tr("Settings directory is not writable"),
-        QString(QObject::tr(
+        nullptr,
+        QCoreApplication::translate("RDM",
+                                    "Settings directory is not writable"),
+        QCoreApplication::translate(
+            "RDM",
             "RDM can't save connections file to settings directory. "
             "Please change file permissions or restart RDM as "
-            "administrator.")));
+            "administrator."));
 
     throw std::runtime_error("invalid connections config");
   }
@@ -97,6 +99,16 @@ void Application::initModels() {
 
   m_formattersManager = QSharedPointer<ValueEditor::FormattersManager>(
       new ValueEditor::FormattersManager());
+
+  connect(m_formattersManager.data(), &ValueEditor::FormattersManager::error,
+          this, [this](const QString& msg) {
+            m_events->log(QString("Formatters: %1").arg(msg));
+          });
+
+  if (!m_formattersDir.isEmpty()) {
+    m_formattersManager->setPath(m_formattersDir);
+  }
+
   m_formattersManager->loadFormatters();
 
   m_consoleAutocompleteModel = QSharedPointer<Console::AutocompleteModel>(
@@ -192,8 +204,8 @@ void Application::initQml() {
 
 void Application::initUpdater() {
   m_updater = QSharedPointer<Updater>(new Updater());
-  connect(m_updater.data(), SIGNAL(updateUrlRetrived(QString &)), this,
-          SLOT(OnNewUpdateAvailable(QString &)));
+  connect(m_updater.data(), SIGNAL(updateUrlRetrived(QString&)), this,
+          SLOT(OnNewUpdateAvailable(QString&)));
 }
 
 void Application::installTranslator() {
@@ -215,7 +227,7 @@ void Application::installTranslator() {
     locale = preferredLocale;
   }
 
-  QTranslator *translator = new QTranslator((QObject *)this);
+  QTranslator* translator = new QTranslator((QObject*)this);
   if (translator->load(QString(":/translations/rdm_") + locale)) {
     qDebug() << "Load translations file for locale:" << locale;
     QCoreApplication::installTranslator(translator);
@@ -230,6 +242,16 @@ void Application::processCmdArgs() {
                                  "(Optional) Directory where RDM looks/saves "
                                  ".rdm directory with connections.json file",
                                  "settingsDir", QDir::homePath());
+  QCommandLineOption formattersDir(
+      "formatters-dir",
+      "(Optional) Directory where RDM looks for native value formatters",
+      "formattersDir",
+#ifdef Q_OS_WIN32
+      QString("%1/formatters").arg(QCoreApplication::applicationDirPath()));
+#else
+      QString());
+#endif
+
   QCommandLineOption renderingBackend(
       "rendering-backend",
       "(Optional) QML rendering backend [software|opengl|d3d12|'']",
@@ -237,17 +259,19 @@ void Application::processCmdArgs() {
   parser.addHelpOption();
   parser.addVersionOption();
   parser.addOption(settingsDir);
+  parser.addOption(formattersDir);
   parser.addOption(renderingBackend);
   parser.process(*this);
 
   m_settingsDir = parser.value(settingsDir);
+  m_formattersDir = parser.value(formattersDir);
   m_renderingBackend = parser.value(renderingBackend);
 }
 
-void Application::OnNewUpdateAvailable(QString &url) {
+void Application::OnNewUpdateAvailable(QString& url) {
   QMessageBox::information(
       nullptr, "New update available",
-      QString(QObject::tr(
-                  "Please download new version of Redis Desktop Manager: %1"))
+      QCoreApplication::translate(
+          "RDM", "Please download new version of Redis Desktop Manager: %1")
           .arg(url));
 }

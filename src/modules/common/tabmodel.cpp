@@ -4,15 +4,12 @@
 TabModel::TabModel(QSharedPointer<RedisClient::Connection> connection,
                    int dbIndex)
     : m_dbIndex(dbIndex) {
-  // Clone connection
-  RedisClient::ConnectionConfig config = connection->getConfig();
-  m_connection = QSharedPointer<RedisClient::Connection>(
-      new RedisClient::Connection(config));
+  m_connection = connection->clone();
 }
 
 TabModel::~TabModel() {
   QtConcurrent::run(
-      [](QSharedPointer<RedisClient::Connection> connection) {        
+      [](QSharedPointer<RedisClient::Connection> connection) {
         connection->disconnect();
       },
       m_connection);
@@ -39,7 +36,8 @@ void TabModel::init() {
   try {
     m_connection->connect(false);
   } catch (RedisClient::Connection::Exception&) {
-    emit error(QObject::tr("Invalid Connection. Check connection settings."));
+    emit error(QCoreApplication::translate(
+        "RDM", "Invalid Connection. Check connection settings."));
     return;
   }
 }

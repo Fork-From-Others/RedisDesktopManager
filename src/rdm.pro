@@ -14,8 +14,6 @@ TEMPLATE = app
     DEFINES += RDM_VERSION=\\\"0.9.999\\\"
 }
 
-DEFINES += CORE_LIBRARY ELPP_QT_LOGGING ELPP_STL_LOGGING ELPP_DISABLE_DEFAULT_CRASH_HANDLING
-
 SOURCES += \
     $$PWD/main.cpp \
     $$PWD/app/app.cpp \
@@ -35,8 +33,7 @@ SOURCES += \
 
 HEADERS  += \
     $$PWD/app/app.h \
-    $$PWD/app/events.h \
-    $$PWD/app/logger.h \
+    $$PWD/app/events.h \    
     $$PWD/app/qmlutils.h \
     $$PWD/app/models/*.h \
     $$PWD/app/models/key-models/*.h \
@@ -141,8 +138,12 @@ RESOURCES += \
     $$PWD/resources/images.qrc \
     $$PWD/resources/fonts.qrc \    
     $$PWD/qml/qml.qrc \
-    $$PWD/resources/tr.qrc \
-    resources/commands.qrc
+    $$PWD/resources/commands.qrc
+
+exists( $$PWD/resources/translations/rdm.qm ) {
+    message("Translations found")
+    RESOURCES += $$PWD/resources/tr.qrc
+}
 
 OTHER_FILES += \
     qt.conf \

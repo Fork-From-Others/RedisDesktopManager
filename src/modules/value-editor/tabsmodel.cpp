@@ -1,6 +1,7 @@
 #include "tabsmodel.h"
 #include <qredisclient/connection.h>
 #include <qredisclient/utils/text.h>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QQmlEngine>
 #include "connections-tree/items/keyitem.h"
@@ -21,7 +22,8 @@ void ValueEditor::TabsModel::openTab(
                                const QString& error) {
           if (keyModel.isNull() || !error.isEmpty()) {
             emit keyError(-1, QString("<b>%1</b>:\n%2")
-                                  .arg(QObject::tr("Cannot open value tab"))
+                                  .arg(QCoreApplication::translate(
+                                      "RDM", "Cannot open value tab"))
                                   .arg(error));
             return;
           }
@@ -29,24 +31,23 @@ void ValueEditor::TabsModel::openTab(
           auto viewModel = loadModel(keyModel, inNewTab);
           auto weakKeyModel = viewModel.toWeakRef();
 
-          QObject::connect(
-              keyModel->getConnector().data(), &ModelSignals::removed, this,
-              [this, weakKeyModel, &key]() {
-                // NOTE(u_glide): React in 100 ms to make sure that keymodel
-                // update is finished
-                QTimer::singleShot(100, [this, weakKeyModel, &key]() {
-                  auto keyModel = weakKeyModel.toStrongRef();
+          connect(keyModel->getConnector().data(), &ModelSignals::removed, this,
+                  [this, weakKeyModel, &key]() {
+                    // NOTE(u_glide): React in 100 ms to make sure that keymodel
+                    // update is finished
+                    QTimer::singleShot(100, [this, weakKeyModel, &key]() {
+                      auto keyModel = weakKeyModel.toStrongRef();
 
-                  if (!keyModel) return;
+                      if (!keyModel) return;
 
-                  removeModel(keyModel);
-                  key.setRemoved();  // Disable key in connections tree
-                });
-              });
+                      removeModel(keyModel);
+                      key.setRemoved();  // Disable key in connections tree
+                    });
+                  });
         });
-    // TODO: add empty key model for loading
   } catch (...) {
-    emit keyError(-1, QObject::tr("Connection error. Can't open value tab. "));
+    emit keyError(-1, QCoreApplication::translate(
+                          "RDM", "Connection error. Can't open value tab. "));
   }
 }
 
@@ -103,11 +104,6 @@ QVariant ValueEditor::TabsModel::data(const QModelIndex& index,
       return model->getType();
     case isMultiRow:
       return model->isMultiRow();
-    case keyViewModel:
-      QObject* modelPtr =
-          qobject_cast<QObject*>(m_viewModels.at(index.row()).data());
-      QQmlEngine::setObjectOwnership(modelPtr, QQmlEngine::CppOwnership);
-      return QVariant(QMetaType::QObjectStar, modelPtr);
   }
 
   return QVariant();
@@ -121,7 +117,6 @@ QHash<int, QByteArray> ValueEditor::TabsModel::roleNames() const {
   roles[keyTTL] = "keyTtl";
   roles[keyType] = "keyType";
   roles[isMultiRow] = "isMultiRow";
-  roles[keyViewModel] = "keyViewModel";
   return roles;
 }
 
@@ -150,8 +145,9 @@ void ValueEditor::TabsModel::addKey(QString keyName, QString keyType,
     m_newKeyRequest = NewKeyRequest();
   } catch (const Model::Exception& e) {
     if (jsCallback.isCallable())
-      jsCallback.call(
-          QJSValueList{QObject::tr("Can't add new key: ") + QString(e.what())});
+      jsCallback.call(QJSValueList{
+          QCoreApplication::translate("RDM", "Can't add new key: ") +
+          QString(e.what())});
   }
 }
 
@@ -164,7 +160,8 @@ void ValueEditor::TabsModel::renameKey(int i, const QString& newKeyName) {
     model->setKeyName(printableStringToBinary(newKeyName));
     emit dataChanged(index(i, 0), index(i, 0));
   } catch (const Model::Exception& e) {
-    emit keyError(i, QObject::tr("Can't rename key: ") + QString(e.what()));
+    emit keyError(i, QCoreApplication::translate("RDM", "Can't rename key: ") +
+                         QString(e.what()));
   }
 }
 
@@ -176,7 +173,8 @@ void ValueEditor::TabsModel::removeKey(int i) {
   try {
     model->removeKey();
   } catch (const Model::Exception& e) {
-    emit keyError(i, QObject::tr("Can't remove key: ") + QString(e.what()));
+    emit keyError(i, QCoreApplication::translate("RDM", "Can't remove key: ") +
+                         QString(e.what()));
   }
 }
 
@@ -189,7 +187,8 @@ void ValueEditor::TabsModel::setTTL(int i, const QString& newTTL) {
     model->setTTL(newTTL.toLong());
     emit dataChanged(index(i, 0), index(i, 0));
   } catch (const Model::Exception& e) {
-    emit keyError(i, QObject::tr("Can't set key ttl: ") + QString(e.what()));
+    emit keyError(i, QCoreApplication::translate("RDM", "Can't set key ttl: ") +
+                         QString(e.what()));
   }
 }
 
@@ -204,7 +203,9 @@ void ValueEditor::TabsModel::closeTab(int i) {
 
     model.clear();
   } catch (const Model::Exception& e) {
-    emit keyError(i, QObject::tr("Can't close key tab: ") + QString(e.what()));
+    emit keyError(i,
+                  QCoreApplication::translate("RDM", "Can't close key tab: ") +
+                      QString(e.what()));
   }
 }
 

@@ -14,7 +14,7 @@ ColumnLayout
     property string textColor
     property string backgroundColor
     property bool showFormatters: true
-    property string fieldLabel: qsTr("Value:")    
+    property string fieldLabel: qsTranslate("RDM","Value") + ":"
     property bool isEdited: false
     property var value    
     property int valueSizeLimit: 150000
@@ -67,8 +67,11 @@ ColumnLayout
     }
 
     function loadFormattedValue(val) {
+        var guessFormatter = false
+
         if (val) {
             root.value = val
+            guessFormatter = true
         }
 
         if (!root.value) {
@@ -87,20 +90,59 @@ ColumnLayout
         binaryFlag.visible = isBin
 
         // If current formatter is plain text - try to guess formatter
-        if (formatterSelector.currentIndex == 0) {
-            formatterSelector.currentIndex = Formatters.guessFormatter(isBin)
+        if (guessFormatter && formatterSelector.currentIndex == 0) {
+            _guessFormatter(isBin, function() {
+                _loadFormatter(isBin)
+            })
+        } else {
+            _loadFormatter(isBin)
+        }
+    }
+
+    function _guessFormatter(isBin, callback) {
+        console.log("Guessing formatter")
+
+        var candidates = Formatters.guessFormatter(isBin)
+
+        console.log("candidates:", candidates)
+
+        if (Array.isArray(candidates)) {
+
+            for (var index in candidates) {
+                var cFormatter = formatterSelector.model[candidates[index]]
+
+                cFormatter.instance.isValid(root.value, function (isValid) {
+                    if (isValid && formatterSelector.currentIndex == 0) {
+                        formatterSelector.currentIndex = candidates[index]
+                        callback()
+                    }
+                })
+
+                if (formatterSelector.currentIndex !== 0)
+                    break
+            }
+        } else {
+            formatterSelector.currentIndex = candidates
+            callback()
+        }
+    }
+
+    function _loadFormatter(isBin) {
+        if (!(0 < formatterSelector.currentIndex
+              && formatterSelector.currentIndex < formatterSelector.count)) {
+            formatterSelector.currentIndex = isBin? 2 : 0
         }
 
         var formatter = formatterSelector.model[formatterSelector.currentIndex]
 
-        uiBlocker.visible = true                
+        uiBlocker.visible = true
 
         formatter.instance.getFormatted(root.value, function (error, formatted, isReadOnly, format) {
 
             if (error || !formatted) {
                 uiBlocker.visible = false
                 formatterSelector.currentIndex = isBin? 2 : 0 // Reset formatter to plain text
-                notification.showError(error || qsTr("Unknown formatter error (Empty response)"))
+                notification.showError(error || qsTranslate("RDM","Unknown formatter error (Empty response)"))
                 return
             }
 
@@ -113,7 +155,7 @@ ColumnLayout
                     root.isEdited = false
                     uiBlocker.visible = false
                 })
-            } else {                
+            } else {
                 textView.model = qmlUtils.wrapLargeText(formatted)
                 textView.readOnly = isReadOnly
                 root.isEdited = false
@@ -155,13 +197,19 @@ ColumnLayout
         Layout.fillWidth: true
 
         Text { text: root.fieldLabel }
-        TextEdit { text: qsTr("size: ") + qmlUtils.humanSize(qmlUtils.binaryStringLength(value)); readOnly: true; color: "#ccc"  }
-        Text { id: binaryFlag; text: qsTr("[Binary]"); visible: false; color: "green"; }        
+        TextEdit {
+            Layout.preferredWidth: 150
+            text: qsTranslate("RDM", "Size: ") + qmlUtils.humanSize(qmlUtils.binaryStringLength(value));
+            readOnly: true;
+            selectByMouse: true
+            color: "#ccc"
+        }
+        Text { id: binaryFlag; text: qsTranslate("RDM","[Binary]"); visible: false; color: "green"; }        
         Item { Layout.fillWidth: true }
 
         ImageButton {
             iconSource: "qrc:/images/copy.svg"
-            tooltip: qsTr("Copy to Clipboard")
+            tooltip: qsTranslate("RDM","Copy to Clipboard")
 
             onClicked: {
                 if (textView.model) {
@@ -170,7 +218,7 @@ ColumnLayout
             }
         }
 
-        Text { visible: showFormatters; text: qsTr("View as:") }
+        Text { visible: showFormatters; text: qsTranslate("RDM","View as:") }
 
         ComboBox {
             id: formatterSelector
@@ -189,7 +237,7 @@ ColumnLayout
             }
         }
 
-        Text { visible: !showFormatters && qmlUtils.binaryStringLength(root.value) > valueSizeLimit; text: qsTr("Large value (>150kB). Formatters is not available."); color: "red"; }
+        Text { visible: !showFormatters && qmlUtils.binaryStringLength(root.value) > valueSizeLimit; text: qsTranslate("RDM","Large value (>150kB). Formatters is not available."); color: "red"; }
     }
 
     Rectangle {
